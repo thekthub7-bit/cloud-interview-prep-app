@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bookmark, BookmarkCheck, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Bookmark, BookmarkCheck } from 'lucide-react';
 import { useBookmarks } from '../contexts/BookmarkContext';
 
 type Difficulty = 'beginner' | 'medium' | 'pro';
@@ -9,135 +9,8 @@ interface Question {
   id: string;
   question: string;
   answer: string;
-  topic: string;
-  difficulty: Difficulty;
+  image_suggestion?: string;
 }
-
-const sampleQuestions: Record<string, Record<Difficulty, Question[]>> = {
-  aws: {
-    beginner: [
-      {
-        id: 'aws-b-1',
-        question: 'What is AWS?',
-        answer: 'Amazon Web Services (AWS) is a comprehensive cloud computing platform provided by Amazon. It offers a wide range of services including computing power, storage, databases, networking, analytics, machine learning, and more, delivered on-demand over the internet.',
-        topic: 'aws',
-        difficulty: 'beginner'
-      },
-      {
-        id: 'aws-b-2',
-        question: 'What is EC2?',
-        answer: 'Amazon Elastic Compute Cloud (EC2) is a web service that provides resizable compute capacity in the cloud. It allows you to launch virtual servers (instances) with various configurations of CPU, memory, storage, and networking capacity.',
-        topic: 'aws',
-        difficulty: 'beginner'
-      }
-    ],
-    medium: [
-      {
-        id: 'aws-m-1',
-        question: 'Explain the difference between S3 and EBS.',
-        answer: 'S3 (Simple Storage Service) is object storage for storing files and data accessible via REST API, while EBS (Elastic Block Store) provides block-level storage volumes for EC2 instances. S3 is for web-accessible storage, EBS is for instance storage.',
-        topic: 'aws',
-        difficulty: 'medium'
-      }
-    ],
-    pro: [
-      {
-        id: 'aws-p-1',
-        question: 'How would you implement a multi-region disaster recovery strategy?',
-        answer: 'Implement cross-region replication for data, use Route 53 for DNS failover, set up automated backups, configure CloudFormation for infrastructure replication, implement monitoring with CloudWatch, and establish RTO/RPO requirements.',
-        topic: 'aws',
-        difficulty: 'pro'
-      }
-    ]
-  },
-  kubernetes: {
-    beginner: [
-      {
-        id: 'k8s-b-1',
-        question: 'What is Kubernetes?',
-        answer: 'Kubernetes is an open-source container orchestration platform that automates the deployment, scaling, and management of containerized applications across clusters of hosts.',
-        topic: 'kubernetes',
-        difficulty: 'beginner'
-      }
-    ],
-    medium: [
-      {
-        id: 'k8s-m-1',
-        question: 'Explain the difference between Deployment and StatefulSet.',
-        answer: 'Deployments manage stateless applications with identical pods, while StatefulSets manage stateful applications requiring stable network identities, persistent storage, and ordered deployment/scaling.',
-        topic: 'kubernetes',
-        difficulty: 'medium'
-      }
-    ],
-    pro: [
-      {
-        id: 'k8s-p-1',
-        question: 'How do you implement custom resource definitions (CRDs)?',
-        answer: 'Create a CRD YAML manifest defining the schema, apply it to extend the Kubernetes API, then implement a custom controller to watch and manage the custom resources using client-go libraries.',
-        topic: 'kubernetes',
-        difficulty: 'pro'
-      }
-    ]
-  },
-  terraform: {
-    beginner: [
-      {
-        id: 'tf-b-1',
-        question: 'What is Terraform?',
-        answer: 'Terraform is an Infrastructure as Code (IaC) tool that allows you to define and provision infrastructure using declarative configuration files. It supports multiple cloud providers and maintains state to track resource changes.',
-        topic: 'terraform',
-        difficulty: 'beginner'
-      }
-    ],
-    medium: [
-      {
-        id: 'tf-m-1',
-        question: 'Explain Terraform state and its importance.',
-        answer: 'Terraform state is a file that maps real-world resources to your configuration. It tracks metadata, improves performance, and enables collaboration. It should be stored remotely and locked to prevent conflicts.',
-        topic: 'terraform',
-        difficulty: 'medium'
-      }
-    ],
-    pro: [
-      {
-        id: 'tf-p-1',
-        question: 'How do you implement Terraform modules for reusability?',
-        answer: 'Create modules with input variables, outputs, and main.tf files. Use semantic versioning, implement proper variable validation, document usage, and publish to registries for team reuse.',
-        topic: 'terraform',
-        difficulty: 'pro'
-      }
-    ]
-  },
-  ansible: {
-    beginner: [
-      {
-        id: 'ans-b-1',
-        question: 'What is Ansible?',
-        answer: 'Ansible is an open-source automation tool for configuration management, application deployment, and task automation. It uses YAML playbooks and is agentless, connecting to nodes via SSH.',
-        topic: 'ansible',
-        difficulty: 'beginner'
-      }
-    ],
-    medium: [
-      {
-        id: 'ans-m-1',
-        question: 'Explain Ansible roles and their structure.',
-        answer: 'Ansible roles organize playbooks into reusable components with standardized directory structure including tasks, handlers, variables, templates, and files directories for better organization and reusability.',
-        topic: 'ansible',
-        difficulty: 'medium'
-      }
-    ],
-    pro: [
-      {
-        id: 'ans-p-1',
-        question: 'How do you implement Ansible Vault for secrets management?',
-        answer: 'Use ansible-vault to encrypt sensitive data, store vault passwords securely, implement vault IDs for multiple vaults, and integrate with CI/CD pipelines using vault password files or scripts.',
-        topic: 'ansible',
-        difficulty: 'pro'
-      }
-    ]
-  }
-};
 
 const QAScreen: React.FC = () => {
   const { topicId, difficulty } = useParams<{ topicId: string; difficulty: string }>();
@@ -145,46 +18,71 @@ const QAScreen: React.FC = () => {
   const { bookmarks, addBookmark, removeBookmark } = useBookmarks();
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [showAnswer, setShowAnswer] = useState(false);
   const [currentDifficulty, setCurrentDifficulty] = useState<Difficulty>(difficulty as Difficulty);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const questions = sampleQuestions[topicId || '']?.[currentDifficulty] || [];
   const currentQuestion = questions[currentQuestionIndex];
-
   const isBookmarked = currentQuestion ? bookmarks.some(b => b.id === currentQuestion.id) : false;
 
   useEffect(() => {
-    setCurrentQuestionIndex(0);
-    setShowAnswer(false);
-  }, [currentDifficulty]);
+    const loadQuestions = async () => {
+      setLoading(true);
+      try {
+        const module = await import(`../data/topics/${topicId}/${currentDifficulty}.ts`);
+        setQuestions(module.default);
+        setCurrentQuestionIndex(0);
+      } catch (error) {
+        console.error('Failed to load questions:', error);
+        setQuestions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (topicId && currentDifficulty) {
+      loadQuestions();
+    }
+  }, [topicId, currentDifficulty]);
 
   const handleSwipeLeft = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setShowAnswer(false);
     }
   };
 
   const handleSwipeRight = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
-      setShowAnswer(false);
     }
   };
 
   const toggleBookmark = () => {
     if (!currentQuestion) return;
     
+    const questionWithMeta = {
+      ...currentQuestion,
+      topic: topicId || '',
+      difficulty: currentDifficulty
+    };
+    
     if (isBookmarked) {
       removeBookmark(currentQuestion.id);
     } else {
-      addBookmark(currentQuestion);
+      addBookmark(questionWithMeta);
     }
   };
 
-  const toggleAnswer = () => {
-    setShowAnswer(!showAnswer);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold">Loading questions...</h2>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentQuestion) {
     return (
@@ -250,40 +148,26 @@ const QAScreen: React.FC = () => {
             document.addEventListener('touchend', handleTouchEnd);
           }}
         >
-          {/* Question Section */}
-          <div className="h-1/2 bg-gradient-to-br from-blue-500 to-purple-600 p-8 flex flex-col justify-center">
-            <h2 className="text-white text-xl font-bold leading-tight">
+          {/* Question Section - 35% */}
+          <div className="h-[35%] bg-gradient-to-br from-blue-500 to-purple-600 p-6 flex flex-col justify-center">
+            <h2 className="text-white text-lg font-bold leading-tight">
               {currentQuestion.question}
             </h2>
           </div>
 
-          {/* Answer Section */}
-          <div 
-            className={`h-1/2 p-8 flex flex-col justify-center transition-all duration-500 ${
-              showAnswer ? 'bg-green-50' : 'bg-gray-50'
-            }`}
-            onClick={toggleAnswer}
-          >
-            {showAnswer ? (
-              <div className="space-y-4">
-                <p className="text-gray-800 leading-relaxed">
-                  {currentQuestion.answer}
-                </p>
-                <div className="flex items-center justify-center text-green-600">
-                  <ChevronUp className="w-6 h-6" />
-                  <span className="text-sm ml-2">Tap to hide</span>
+          {/* Answer Section - 65% */}
+          <div className="h-[65%] p-6 flex flex-col justify-start bg-gray-50 overflow-y-auto">
+            <div className="space-y-4">
+              <p className="text-gray-800 leading-relaxed whitespace-pre-line">
+                {currentQuestion.answer}
+              </p>
+              {currentQuestion.image_suggestion && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-700 font-medium">💡 Visual suggestion:</p>
+                  <p className="text-sm text-blue-600 mt-1">{currentQuestion.image_suggestion}</p>
                 </div>
-              </div>
-            ) : (
-              <div className="text-center">
-                <div className="flex items-center justify-center text-gray-500 mb-4">
-                  <ChevronDown className="w-6 h-6" />
-                </div>
-                <p className="text-gray-600 text-lg font-medium">
-                  Tap to reveal answer
-                </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

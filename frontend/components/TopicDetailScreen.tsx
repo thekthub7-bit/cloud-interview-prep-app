@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import BottomNavigation from './BottomNavigation';
 
 type Difficulty = 'beginner' | 'medium' | 'pro';
@@ -29,8 +29,9 @@ const TopicDetailScreen: React.FC = () => {
     return <div>Topic not found</div>;
   }
 
-  const handleStartQuestions = () => {
-    navigate(`/qa/${topicId}/${selectedDifficulty}`);
+  const handleDifficultySelect = (difficulty: Difficulty) => {
+    setSelectedDifficulty(difficulty);
+    navigate(`/qa/${topicId}/${difficulty}`);
   };
 
   return (
@@ -60,18 +61,10 @@ const TopicDetailScreen: React.FC = () => {
           {difficulties.map((difficulty) => (
             <div
               key={difficulty.id}
-              onClick={() => setSelectedDifficulty(difficulty.id)}
-              className={`cursor-pointer transform transition-all duration-300 ${
-                selectedDifficulty === difficulty.id
-                  ? 'scale-105 shadow-lg'
-                  : 'hover:scale-102 shadow-md'
-              }`}
+              onClick={() => handleDifficultySelect(difficulty.id)}
+              className="cursor-pointer transform transition-all duration-300 hover:scale-102 shadow-md hover:shadow-lg"
             >
-              <div className={`bg-gradient-to-r ${difficulty.gradient} rounded-2xl p-6 border-2 ${
-                selectedDifficulty === difficulty.id
-                  ? 'border-gray-300'
-                  : 'border-transparent'
-              }`}>
+              <div className={`bg-gradient-to-r ${difficulty.gradient} rounded-2xl p-6 border-2 border-transparent`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className={`text-xl font-bold ${difficulty.color}`}>
@@ -83,30 +76,14 @@ const TopicDetailScreen: React.FC = () => {
                       {difficulty.id === 'pro' && 'Advanced level questions'}
                     </p>
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 ${
-                    selectedDifficulty === difficulty.id
-                      ? 'bg-white border-gray-400'
-                      : 'border-gray-300'
-                  }`}>
-                    {selectedDifficulty === difficulty.id && (
-                      <div className="w-full h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500"></div>
-                    )}
+                  <div className="w-6 h-6 rounded-full border-2 border-gray-300">
+                    <div className="w-full h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 hover:opacity-100 transition-opacity"></div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Floating Action Button */}
-      <div className="fixed bottom-24 right-6">
-        <button
-          onClick={handleStartQuestions}
-          className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300"
-        >
-          <Play className="w-8 h-8" />
-        </button>
       </div>
 
       <BottomNavigation activeTab="home" />

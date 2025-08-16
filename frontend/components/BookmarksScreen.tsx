@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { useBookmarks } from '../contexts/BookmarkContext';
 import BottomNavigation from './BottomNavigation';
 
@@ -87,31 +87,15 @@ const BookmarksScreen: React.FC = () => {
                 
                 <button
                   onClick={() => navigate(`/qa/${question.topic}/${question.difficulty}`)}
-                  className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium text-sm"
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm"
                 >
-                  <Play className="w-4 h-4" />
-                  <span>Practice this topic</span>
+                  View in context →
                 </button>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* Floating Action Button */}
-      {bookmarks.length > 0 && (
-        <div className="fixed bottom-24 right-6">
-          <button
-            onClick={() => {
-              // Future: Start quiz with bookmarked questions
-              console.log('Start quiz with bookmarked questions');
-            }}
-            className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300"
-          >
-            <Play className="w-8 h-8" />
-          </button>
-        </div>
-      )}
 
       <BottomNavigation activeTab="bookmarks" />
     </div>
