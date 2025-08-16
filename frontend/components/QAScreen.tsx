@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bookmark, BookmarkCheck } from 'lucide-react';
+import { ArrowLeft, Bookmark, BookmarkCheck, ChevronUp, ChevronDown } from 'lucide-react';
 import { useBookmarks } from '../contexts/BookmarkContext';
 
 type Difficulty = 'beginner' | 'medium' | 'pro';
@@ -29,6 +29,28 @@ const QAScreen: React.FC = () => {
     const loadQuestions = async () => {
       setLoading(true);
       try {
+        // First try to fetch from S3
+        const s3Url = `https://1question2.s3.us-east-1.amazonaws.com/${topicId}+${currentDifficulty}/basic.js`;
+        
+        try {
+          const response = await fetch(s3Url);
+          if (response.ok) {
+            const text = await response.text();
+            // Extract the array from the JS file (assuming it exports default [...])
+            const match = text.match(/export\s+default\s+(\[[\s\S]*\])/);
+            if (match) {
+              const questionsData = JSON.parse(match[1]);
+              setQuestions(questionsData);
+              setCurrentQuestionIndex(0);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (s3Error) {
+          console.log('S3 fetch failed, falling back to local data:', s3Error);
+        }
+
+        // Fallback to local data
         const module = await import(`../data/topics/${topicId}/${currentDifficulty}.ts`);
         setQuestions(module.default);
         setCurrentQuestionIndex(0);
@@ -54,6 +76,16 @@ const QAScreen: React.FC = () => {
   const handleSwipeRight = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
+  const handleScrollNavigation = (e: React.WheelEvent) => {
+    if (e.deltaY > 0) {
+      // Scroll down - next question
+      handleSwipeLeft();
+    } else {
+      // Scroll up - previous question
+      handleSwipeRight();
     }
   };
 
@@ -101,7 +133,10 @@ const QAScreen: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 relative overflow-hidden">
+    <div 
+      className="min-h-screen bg-gray-900 relative overflow-hidden"
+      onWheel={handleScrollNavigation}
+    >
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-black/20 backdrop-blur-sm">
         <div className="flex items-center justify-between px-6 py-4">
@@ -136,13 +171,28 @@ const QAScreen: React.FC = () => {
           className="w-full max-w-md h-5/6 bg-white rounded-3xl shadow-2xl overflow-hidden relative"
           onTouchStart={(e) => {
             const startX = e.touches[0].clientX;
+            const startY = e.touches[0].clientY;
             const handleTouchEnd = (endEvent: TouchEvent) => {
               const endX = endEvent.changedTouches[0].clientX;
-              const diff = startX - endX;
-              if (Math.abs(diff) > 50) {
-                if (diff > 0) handleSwipeLeft();
+              const endY = endEvent.changedTouches[0].clientY;
+              const diffX = startX - endX;
+              const diffY = startY - endY;
+              
+              // Prioritize vertical swipes for navigation
+              if (Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 50) {
+                if (diffY > 0) {
+                  // Swipe up - next question
+                  handleSwipeLeft();
+                } else {
+                  // Swipe down - previous question
+                  handleSwipeRight();
+                }
+              } else if (Math.abs(diffX) > 50) {
+                // Horizontal swipes
+                if (diffX > 0) handleSwipeLeft();
                 else handleSwipeRight();
               }
+              
               document.removeEventListener('touchend', handleTouchEnd);
             };
             document.addEventListener('touchend', handleTouchEnd);
@@ -191,16 +241,27 @@ const QAScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Swipe Indicators */}
-      <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+      {/* Navigation Indicators */}
+      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/50">
         {currentQuestionIndex > 0 && (
-          <div className="text-white/50 text-xs">← Previous</div>
+          <div className="flex flex-col items-center space-y-2">
+            <ChevronUp className="w-6 h-6" />
+            <div className="text-xs">Previous</div>
+          </div>
         )}
       </div>
-      <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/50">
         {currentQuestionIndex < questions.length - 1 && (
-          <div className="text-white/50 text-xs">Next →</div>
+          <div className="flex flex-col items-center space-y-2">
+            <ChevronDown className="w-6 h-6" />
+            <div className="text-xs">Next</div>
+          </div>
         )}
+      </div>
+
+      {/* Scroll/Swipe Instructions */}
+      <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 text-white/40 text-xs text-center">
+        <p>Scroll up/down or swipe to navigate</p>
       </div>
     </div>
   );
