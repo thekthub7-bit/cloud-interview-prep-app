@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bookmark, BookmarkCheck } from 'lucide-react';
+import { ArrowLeft, Bookmark, BookmarkCheck, ChevronUp, ChevronDown } from 'lucide-react';
 import { useBookmarks } from '../contexts/BookmarkContext';
 
 type Difficulty = 'beginner' | 'medium' | 'pro';
@@ -22,10 +22,10 @@ const QAScreen: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef<number>(0);
-  const currentY = useRef<number>(0);
   const isDragging = useRef<boolean>(false);
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -90,42 +90,33 @@ const QAScreen: React.FC = () => {
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (isTransitioning) return;
     startY.current = e.touches[0].clientY;
-    currentY.current = e.touches[0].clientY;
     isDragging.current = true;
+    setDragOffset(0);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging.current) return;
+    if (!isDragging.current || isTransitioning) return;
     
-    currentY.current = e.touches[0].clientY;
-    const deltaY = currentY.current - startY.current;
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - startY.current;
     
-    // Apply transform to create drag effect
-    if (containerRef.current) {
-      const progress = Math.min(Math.abs(deltaY) / 100, 1);
-      const scale = 1 - progress * 0.05;
-      const opacity = 1 - progress * 0.3;
-      
-      containerRef.current.style.transform = `translateY(${deltaY * 0.5}px) scale(${scale})`;
-      containerRef.current.style.opacity = opacity.toString();
-    }
+    // Limit drag distance and add resistance
+    const maxDrag = 150;
+    const resistance = 0.6;
+    const limitedDelta = Math.sign(deltaY) * Math.min(Math.abs(deltaY) * resistance, maxDrag);
+    
+    setDragOffset(limitedDelta);
   };
 
   const handleTouchEnd = () => {
-    if (!isDragging.current) return;
+    if (!isDragging.current || isTransitioning) return;
     
-    const deltaY = currentY.current - startY.current;
-    const threshold = 80;
+    const threshold = 60;
     
-    // Reset transform
-    if (containerRef.current) {
-      containerRef.current.style.transform = '';
-      containerRef.current.style.opacity = '';
-    }
-    
-    if (Math.abs(deltaY) > threshold) {
-      if (deltaY < 0) {
+    if (Math.abs(dragOffset) > threshold) {
+      if (dragOffset < 0) {
         // Swipe up - next question
         goToNextQuestion();
       } else {
@@ -134,17 +125,37 @@ const QAScreen: React.FC = () => {
       }
     }
     
+    setDragOffset(0);
     isDragging.current = false;
   };
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
+    if (isTransitioning) return;
+    
     if (e.deltaY > 0) {
       goToNextQuestion();
     } else {
       goToPreviousQuestion();
     }
   };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (isTransitioning) return;
+    
+    if (e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      goToNextQuestion();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      goToPreviousQuestion();
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentQuestionIndex, questions.length, isTransitioning]);
 
   const toggleBookmark = () => {
     if (!currentQuestion) return;
@@ -189,6 +200,14 @@ const QAScreen: React.FC = () => {
     );
   }
 
+  const cardTransform = isTransitioning 
+    ? 'scale(0.95)' 
+    : `translateY(${dragOffset}px) scale(${1 - Math.abs(dragOffset) * 0.0005})`;
+
+  const cardOpacity = isTransitioning 
+    ? 0.7 
+    : 1 - Math.abs(dragOffset) * 0.002;
+
   return (
     <div 
       className="min-h-screen bg-gray-900 relative overflow-hidden select-none"
@@ -226,9 +245,11 @@ const QAScreen: React.FC = () => {
       <div className="h-screen flex items-center justify-center p-4">
         <div 
           ref={containerRef}
-          className={`w-full max-w-sm h-full bg-white rounded-3xl shadow-2xl overflow-hidden relative transition-all duration-300 ${
-            isTransitioning ? 'scale-95 opacity-70' : 'scale-100 opacity-100'
-          }`}
+          className="w-full max-w-sm h-full bg-white rounded-3xl shadow-2xl overflow-hidden relative transition-all duration-300"
+          style={{
+            transform: cardTransform,
+            opacity: cardOpacity
+          }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -239,19 +260,24 @@ const QAScreen: React.FC = () => {
               {currentQuestion.question}
             </h2>
             
-            {/* Swipe indicator */}
+            {/* Progress dots */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
               <div className="flex space-x-1">
-                {questions.map((_, index) => (
+                {questions.slice(0, Math.min(questions.length, 10)).map((_, index) => (
                   <div
                     key={index}
                     className={`w-2 h-2 rounded-full transition-all duration-300 ${
                       index === currentQuestionIndex 
-                        ? 'bg-white' 
+                        ? 'bg-white scale-125' 
                         : 'bg-white/30'
                     }`}
                   />
                 ))}
+                {questions.length > 10 && (
+                  <div className="text-white/60 text-xs ml-2">
+                    +{questions.length - 10}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -273,6 +299,31 @@ const QAScreen: React.FC = () => {
         </div>
       </div>
 
+      {/* Navigation Buttons */}
+      <div className="absolute left-6 top-1/2 transform -translate-y-1/2 z-10">
+        {currentQuestionIndex > 0 && (
+          <button
+            onClick={goToPreviousQuestion}
+            disabled={isTransitioning}
+            className="p-3 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-200 disabled:opacity-50"
+          >
+            <ChevronUp className="w-6 h-6" />
+          </button>
+        )}
+      </div>
+      
+      <div className="absolute right-6 top-1/2 transform -translate-y-1/2 z-10">
+        {currentQuestionIndex < questions.length - 1 && (
+          <button
+            onClick={goToNextQuestion}
+            disabled={isTransitioning}
+            className="p-3 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-200 disabled:opacity-50"
+          >
+            <ChevronDown className="w-6 h-6" />
+          </button>
+        )}
+      </div>
+
       {/* Difficulty Switcher */}
       <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-20">
         <div className="flex space-x-2 bg-black/30 backdrop-blur-sm rounded-full p-2">
@@ -292,29 +343,29 @@ const QAScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation hints */}
-      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/30 z-10">
-        {currentQuestionIndex > 0 && (
-          <div className="text-xs text-center">
-            <div className="mb-1">↑</div>
-            <div>Previous</div>
-          </div>
-        )}
-      </div>
-      
-      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/30 z-10">
-        {currentQuestionIndex < questions.length - 1 && (
-          <div className="text-xs text-center">
-            <div className="mb-1">↓</div>
-            <div>Next</div>
-          </div>
-        )}
-      </div>
-
       {/* Swipe instruction */}
       <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 text-white/40 text-xs text-center z-10">
-        <p>Swipe up/down to navigate</p>
+        <p>Swipe up/down • Use arrow keys • Scroll to navigate</p>
       </div>
+
+      {/* Drag feedback */}
+      {isDragging.current && Math.abs(dragOffset) > 30 && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+          <div className="bg-black/60 backdrop-blur-sm rounded-full p-4 text-white">
+            {dragOffset < 0 ? (
+              <div className="flex items-center space-x-2">
+                <ChevronDown className="w-6 h-6" />
+                <span className="text-sm">Next Question</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <ChevronUp className="w-6 h-6" />
+                <span className="text-sm">Previous Question</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
