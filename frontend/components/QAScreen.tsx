@@ -23,6 +23,8 @@ const QAScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
+  const [nextQuestion, setNextQuestion] = useState<Question | null>(null);
+  const [prevQuestion, setPrevQuestion] = useState<Question | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef<number>(0);
@@ -73,19 +75,31 @@ const QAScreen: React.FC = () => {
     }
   }, [topicId, currentDifficulty]);
 
+  // Update next and previous questions when current index changes
+  useEffect(() => {
+    if (questions.length > 0) {
+      setNextQuestion(currentQuestionIndex < questions.length - 1 ? questions[currentQuestionIndex + 1] : null);
+      setPrevQuestion(currentQuestionIndex > 0 ? questions[currentQuestionIndex - 1] : null);
+    }
+  }, [currentQuestionIndex, questions]);
+
   const goToNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1 && !isTransitioning) {
       setIsTransitioning(true);
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setTimeout(() => setIsTransitioning(false), 300);
+      setTimeout(() => {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        setIsTransitioning(false);
+      }, 150);
     }
   };
 
   const goToPreviousQuestion = () => {
     if (currentQuestionIndex > 0 && !isTransitioning) {
       setIsTransitioning(true);
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-      setTimeout(() => setIsTransitioning(false), 300);
+      setTimeout(() => {
+        setCurrentQuestionIndex(currentQuestionIndex - 1);
+        setIsTransitioning(false);
+      }, 150);
     }
   };
 
@@ -103,8 +117,8 @@ const QAScreen: React.FC = () => {
     const deltaY = currentY - startY.current;
     
     // Limit drag distance and add resistance
-    const maxDrag = 150;
-    const resistance = 0.6;
+    const maxDrag = 120;
+    const resistance = 0.7;
     const limitedDelta = Math.sign(deltaY) * Math.min(Math.abs(deltaY) * resistance, maxDrag);
     
     setDragOffset(limitedDelta);
@@ -113,7 +127,7 @@ const QAScreen: React.FC = () => {
   const handleTouchEnd = () => {
     if (!isDragging.current || isTransitioning) return;
     
-    const threshold = 60;
+    const threshold = 50;
     
     if (Math.abs(dragOffset) > threshold) {
       if (dragOffset < 0) {
@@ -201,12 +215,12 @@ const QAScreen: React.FC = () => {
   }
 
   const cardTransform = isTransitioning 
-    ? 'scale(0.95)' 
-    : `translateY(${dragOffset}px) scale(${1 - Math.abs(dragOffset) * 0.0005})`;
+    ? 'scale(0.98) translateY(0px)' 
+    : `translateY(${dragOffset}px) scale(${1 - Math.abs(dragOffset) * 0.0003})`;
 
   const cardOpacity = isTransitioning 
-    ? 0.7 
-    : 1 - Math.abs(dragOffset) * 0.002;
+    ? 0.9 
+    : 1 - Math.abs(dragOffset) * 0.001;
 
   return (
     <div 
@@ -245,7 +259,7 @@ const QAScreen: React.FC = () => {
       <div className="h-screen flex items-center justify-center p-4">
         <div 
           ref={containerRef}
-          className="w-full max-w-sm h-full bg-white rounded-3xl shadow-2xl overflow-hidden relative transition-all duration-300"
+          className="w-full max-w-sm h-full bg-white rounded-3xl shadow-2xl overflow-hidden relative transition-all duration-150 ease-out"
           style={{
             transform: cardTransform,
             opacity: cardOpacity
@@ -266,7 +280,7 @@ const QAScreen: React.FC = () => {
                 {questions.slice(0, Math.min(questions.length, 10)).map((_, index) => (
                   <div
                     key={index}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
                       index === currentQuestionIndex 
                         ? 'bg-white scale-125' 
                         : 'bg-white/30'
@@ -299,13 +313,13 @@ const QAScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Buttons */}
+      {/* Navigation Buttons - Improved */}
       <div className="absolute left-6 top-1/2 transform -translate-y-1/2 z-10">
-        {currentQuestionIndex > 0 && (
+        {prevQuestion && (
           <button
             onClick={goToPreviousQuestion}
             disabled={isTransitioning}
-            className="p-3 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-200 disabled:opacity-50"
+            className="p-4 rounded-full bg-white/25 backdrop-blur-sm text-white hover:bg-white/35 transition-all duration-200 disabled:opacity-50 shadow-lg"
           >
             <ChevronUp className="w-6 h-6" />
           </button>
@@ -313,11 +327,11 @@ const QAScreen: React.FC = () => {
       </div>
       
       <div className="absolute right-6 top-1/2 transform -translate-y-1/2 z-10">
-        {currentQuestionIndex < questions.length - 1 && (
+        {nextQuestion && (
           <button
             onClick={goToNextQuestion}
             disabled={isTransitioning}
-            className="p-3 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-200 disabled:opacity-50"
+            className="p-4 rounded-full bg-white/25 backdrop-blur-sm text-white hover:bg-white/35 transition-all duration-200 disabled:opacity-50 shadow-lg"
           >
             <ChevronDown className="w-6 h-6" />
           </button>
@@ -348,19 +362,33 @@ const QAScreen: React.FC = () => {
         <p>Swipe up/down • Use arrow keys • Scroll to navigate</p>
       </div>
 
-      {/* Drag feedback */}
-      {isDragging.current && Math.abs(dragOffset) > 30 && (
+      {/* Drag feedback - Improved */}
+      {isDragging.current && Math.abs(dragOffset) > 25 && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-          <div className="bg-black/60 backdrop-blur-sm rounded-full p-4 text-white">
+          <div className="bg-black/70 backdrop-blur-sm rounded-2xl p-4 text-white shadow-xl">
             {dragOffset < 0 ? (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 <ChevronDown className="w-6 h-6" />
-                <span className="text-sm">Next Question</span>
+                <div>
+                  <span className="text-sm font-medium">Next Question</span>
+                  {nextQuestion && (
+                    <p className="text-xs text-white/70 mt-1 max-w-48 truncate">
+                      {nextQuestion.question}
+                    </p>
+                  )}
+                </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 <ChevronUp className="w-6 h-6" />
-                <span className="text-sm">Previous Question</span>
+                <div>
+                  <span className="text-sm font-medium">Previous Question</span>
+                  {prevQuestion && (
+                    <p className="text-xs text-white/70 mt-1 max-w-48 truncate">
+                      {prevQuestion.question}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
