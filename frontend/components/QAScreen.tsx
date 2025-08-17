@@ -37,28 +37,6 @@ const QAScreen: React.FC = () => {
     const loadQuestions = async () => {
       setLoading(true);
       try {
-        // First try to fetch from S3
-        const s3Url = `https://1question2.s3.us-east-1.amazonaws.com/${topicId}+${currentDifficulty}/basic.js`;
-        
-        try {
-          const response = await fetch(s3Url);
-          if (response.ok) {
-            const text = await response.text();
-            // Extract the array from the JS file (assuming it exports default [...])
-            const match = text.match(/export\s+default\s+(\[[\s\S]*\])/);
-            if (match) {
-              const questionsData = JSON.parse(match[1]);
-              setQuestions(questionsData);
-              setCurrentQuestionIndex(0);
-              setLoading(false);
-              return;
-            }
-          }
-        } catch (s3Error) {
-          console.log('S3 fetch failed, falling back to local data:', s3Error);
-        }
-
-        // Fallback to local data
         const module = await import(`../data/topics/${topicId}/${currentDifficulty}.ts`);
         setQuestions(module.default);
         setCurrentQuestionIndex(0);
