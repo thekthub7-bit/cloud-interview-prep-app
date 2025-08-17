@@ -218,7 +218,7 @@ const QAScreen: React.FC = () => {
         <button
           onClick={goToPreviousQuestion}
           disabled={currentQuestionIndex === 0 || isTransitioning}
-          className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-200 disabled:opacity-20 disabled:cursor-not-allowed shadow-lg"
+          className="p-2 rounded-full bg-white/70 backdrop-blur-sm text-gray-900 hover:bg-white/80 transition-all duration-200 disabled:opacity-20 disabled:cursor-not-allowed shadow-lg"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -229,7 +229,7 @@ const QAScreen: React.FC = () => {
         <button
           onClick={goToNextQuestion}
           disabled={currentQuestionIndex === questions.length - 1 || isTransitioning}
-          className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-200 disabled:opacity-20 disabled:cursor-not-allowed shadow-lg"
+          className="p-2 rounded-full bg-white/70 backdrop-blur-sm text-gray-900 hover:bg-white/80 transition-all duration-200 disabled:opacity-20 disabled:cursor-not-allowed shadow-lg"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
