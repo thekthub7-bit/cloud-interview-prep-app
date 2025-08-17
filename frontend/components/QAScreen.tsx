@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bookmark, BookmarkCheck, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Bookmark, BookmarkCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBookmarks } from '../contexts/BookmarkContext';
 
 type Difficulty = 'beginner' | 'medium' | 'pro';
@@ -22,13 +22,6 @@ const QAScreen: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
-  const [nextQuestion, setNextQuestion] = useState<Question | null>(null);
-  const [prevQuestion, setPrevQuestion] = useState<Question | null>(null);
-  
-  const containerRef = useRef<HTMLDivElement>(null);
-  const startY = useRef<number>(0);
-  const isDragging = useRef<boolean>(false);
 
   const currentQuestion = questions[currentQuestionIndex];
   const isBookmarked = currentQuestion ? bookmarks.some(b => b.id === currentQuestion.id) : false;
@@ -53,14 +46,6 @@ const QAScreen: React.FC = () => {
     }
   }, [topicId, currentDifficulty]);
 
-  // Update next and previous questions when current index changes
-  useEffect(() => {
-    if (questions.length > 0) {
-      setNextQuestion(currentQuestionIndex < questions.length - 1 ? questions[currentQuestionIndex + 1] : null);
-      setPrevQuestion(currentQuestionIndex > 0 ? questions[currentQuestionIndex - 1] : null);
-    }
-  }, [currentQuestionIndex, questions]);
-
   const goToNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1 && !isTransitioning) {
       setIsTransitioning(true);
@@ -81,64 +66,13 @@ const QAScreen: React.FC = () => {
     }
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (isTransitioning) return;
-    startY.current = e.touches[0].clientY;
-    isDragging.current = true;
-    setDragOffset(0);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging.current || isTransitioning) return;
-    
-    const currentY = e.touches[0].clientY;
-    const deltaY = currentY - startY.current;
-    
-    // Limit drag distance and add resistance
-    const maxDrag = 120;
-    const resistance = 0.7;
-    const limitedDelta = Math.sign(deltaY) * Math.min(Math.abs(deltaY) * resistance, maxDrag);
-    
-    setDragOffset(limitedDelta);
-  };
-
-  const handleTouchEnd = () => {
-    if (!isDragging.current || isTransitioning) return;
-    
-    const threshold = 50;
-    
-    if (Math.abs(dragOffset) > threshold) {
-      if (dragOffset < 0) {
-        // Swipe up - next question
-        goToNextQuestion();
-      } else {
-        // Swipe down - previous question
-        goToPreviousQuestion();
-      }
-    }
-    
-    setDragOffset(0);
-    isDragging.current = false;
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    if (isTransitioning) return;
-    
-    if (e.deltaY > 0) {
-      goToNextQuestion();
-    } else {
-      goToPreviousQuestion();
-    }
-  };
-
   const handleKeyDown = (e: KeyboardEvent) => {
     if (isTransitioning) return;
     
-    if (e.key === 'ArrowDown' || e.key === ' ') {
+    if (e.key === 'ArrowRight' || e.key === ' ') {
       e.preventDefault();
       goToNextQuestion();
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
       goToPreviousQuestion();
     }
@@ -192,19 +126,11 @@ const QAScreen: React.FC = () => {
     );
   }
 
-  const cardTransform = isTransitioning 
-    ? 'scale(0.98) translateY(0px)' 
-    : `translateY(${dragOffset}px) scale(${1 - Math.abs(dragOffset) * 0.0003})`;
-
-  const cardOpacity = isTransitioning 
-    ? 0.9 
-    : 1 - Math.abs(dragOffset) * 0.001;
+  const cardTransform = isTransitioning ? 'scale(0.98)' : 'scale(1)';
+  const cardOpacity = isTransitioning ? 0.9 : 1;
 
   return (
-    <div 
-      className="min-h-screen bg-gray-900 relative overflow-hidden select-none"
-      onWheel={handleWheel}
-    >
+    <div className="min-h-screen bg-gray-900 relative overflow-hidden select-none">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-20 bg-black/20 backdrop-blur-sm">
         <div className="flex items-center justify-between px-6 py-4">
@@ -236,15 +162,11 @@ const QAScreen: React.FC = () => {
       {/* Main Content Container */}
       <div className="h-screen flex items-center justify-center p-4">
         <div 
-          ref={containerRef}
           className="w-full max-w-sm h-full bg-white rounded-3xl shadow-2xl overflow-hidden relative transition-all duration-150 ease-out"
           style={{
             transform: cardTransform,
             opacity: cardOpacity
           }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
         >
           {/* Question Section - 35% */}
           <div className="h-[35%] bg-gradient-to-br from-blue-500 to-purple-600 p-6 flex flex-col justify-center relative">
@@ -291,29 +213,31 @@ const QAScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Buttons - Improved */}
-      <div className="absolute left-6 top-1/2 transform -translate-y-1/2 z-10">
-        {prevQuestion && (
+      {/* Navigation Buttons */}
+      <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-20">
+        <div className="flex items-center space-x-6">
           <button
             onClick={goToPreviousQuestion}
-            disabled={isTransitioning}
-            className="p-4 rounded-full bg-white/25 backdrop-blur-sm text-white hover:bg-white/35 transition-all duration-200 disabled:opacity-50 shadow-lg"
+            disabled={currentQuestionIndex === 0 || isTransitioning}
+            className="p-4 rounded-full bg-white/25 backdrop-blur-sm text-white hover:bg-white/35 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
           >
-            <ChevronUp className="w-6 h-6" />
+            <ChevronLeft className="w-6 h-6" />
           </button>
-        )}
-      </div>
-      
-      <div className="absolute right-6 top-1/2 transform -translate-y-1/2 z-10">
-        {nextQuestion && (
+          
+          <div className="text-white text-center px-4">
+            <p className="text-sm font-medium">
+              {currentQuestionIndex + 1} / {questions.length}
+            </p>
+          </div>
+          
           <button
             onClick={goToNextQuestion}
-            disabled={isTransitioning}
-            className="p-4 rounded-full bg-white/25 backdrop-blur-sm text-white hover:bg-white/35 transition-all duration-200 disabled:opacity-50 shadow-lg"
+            disabled={currentQuestionIndex === questions.length - 1 || isTransitioning}
+            className="p-4 rounded-full bg-white/25 backdrop-blur-sm text-white hover:bg-white/35 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
           >
-            <ChevronDown className="w-6 h-6" />
+            <ChevronRight className="w-6 h-6" />
           </button>
-        )}
+        </div>
       </div>
 
       {/* Difficulty Switcher */}
@@ -335,43 +259,10 @@ const QAScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Swipe instruction */}
+      {/* Keyboard instruction */}
       <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 text-white/40 text-xs text-center z-10">
-        <p>Swipe up/down • Use arrow keys • Scroll to navigate</p>
+        <p>Use arrow keys or buttons to navigate</p>
       </div>
-
-      {/* Drag feedback - Improved */}
-      {isDragging.current && Math.abs(dragOffset) > 25 && (
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
-          <div className="bg-black/70 backdrop-blur-sm rounded-2xl p-4 text-white shadow-xl">
-            {dragOffset < 0 ? (
-              <div className="flex items-center space-x-3">
-                <ChevronDown className="w-6 h-6" />
-                <div>
-                  <span className="text-sm font-medium">Next Question</span>
-                  {nextQuestion && (
-                    <p className="text-xs text-white/70 mt-1 max-w-48 truncate">
-                      {nextQuestion.question}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <ChevronUp className="w-6 h-6" />
-                <div>
-                  <span className="text-sm font-medium">Previous Question</span>
-                  {prevQuestion && (
-                    <p className="text-xs text-white/70 mt-1 max-w-48 truncate">
-                      {prevQuestion.question}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
