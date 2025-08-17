@@ -213,30 +213,34 @@ const QAScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Buttons */}
+      {/* Left Navigation Button */}
+      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-20">
+        <button
+          onClick={goToPreviousQuestion}
+          disabled={currentQuestionIndex === 0 || isTransitioning}
+          className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-200 disabled:opacity-20 disabled:cursor-not-allowed shadow-lg"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Right Navigation Button */}
+      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-20">
+        <button
+          onClick={goToNextQuestion}
+          disabled={currentQuestionIndex === questions.length - 1 || isTransitioning}
+          className="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all duration-200 disabled:opacity-20 disabled:cursor-not-allowed shadow-lg"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Question Counter - Center Bottom */}
       <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-20">
-        <div className="flex items-center space-x-6">
-          <button
-            onClick={goToPreviousQuestion}
-            disabled={currentQuestionIndex === 0 || isTransitioning}
-            className="p-4 rounded-full bg-white/25 backdrop-blur-sm text-white hover:bg-white/35 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          
-          <div className="text-white text-center px-4">
-            <p className="text-sm font-medium">
-              {currentQuestionIndex + 1} / {questions.length}
-            </p>
-          </div>
-          
-          <button
-            onClick={goToNextQuestion}
-            disabled={currentQuestionIndex === questions.length - 1 || isTransitioning}
-            className="p-4 rounded-full bg-white/25 backdrop-blur-sm text-white hover:bg-white/35 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
+        <div className="text-white text-center px-4 py-2 bg-black/20 backdrop-blur-sm rounded-full">
+          <p className="text-sm font-medium">
+            {currentQuestionIndex + 1} / {questions.length}
+          </p>
         </div>
       </div>
 
@@ -261,7 +265,7 @@ const QAScreen: React.FC = () => {
 
       {/* Keyboard instruction */}
       <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 text-white/40 text-xs text-center z-10">
-        <p>Use arrow keys or buttons to navigate</p>
+        <p>Use arrow keys or edge buttons to navigate</p>
       </div>
     </div>
   );
